@@ -14,11 +14,14 @@
  
 #include "loraMsgManager.h"
 
+#ifdef ARDUINO
 /** Comment for no debug - if debug need to define serialLog in main */
 #include <SoftwareSerial.h>
 extern SoftwareSerial serialLog; //(10, 11); // RX, TX
 #define LOG_DEBUG(trace) serialLog.print(trace)
 /* end of debug zone */
+#endif
+
 
 LoraMsgManager& LoraMsgManager::getInstance() {
     static  LoraMsgManager  instance;
@@ -105,10 +108,36 @@ bool LoraMsgManager::SendFrame( void ) {
         return false;
     }
 }
-#endif
-    
 
-LoraMsgManager::LoraMsgManager() : trySendingFrameAgain(false), txNextPacket(true), txDone(false), appPort(3), portCallBack(NULL), sendState(IDLE) {
+static void onMacEvent( LoRaMacEventFlags_t *flags, LoRaMacEventInfo_t *info ) {
+    static LoraMsgManager& loraManager=LoraMsgManager::getInstance();
+
+    if( flags->Bits.JoinAccept == 1 ) {
+#if( OVER_THE_AIR_ACTIVATION != 0 )
+        loraManager.joinReqTimer.detach( );
+#endif
+        LoraMsgManager::isNetworkJoined = true;
+    }
+    
+    if( flags->Bits.Tx == 1 ) {
+    }
+
+    if( flags->Bits.Rx == 1 ) {
+        if( flags->Bits.RxData == true ) {
+            loraManager.processRxFrame( flags, info );
+        }
+    }
+
+    // Schedule a new transmission
+    loraManager.txDone = true;
+    loraManager.sendState=LoraMsgManager::READYTOSEND;
+}
+
+#endif
+
+
+LoraMsgManager::LoraMsgManager() : trySendingFrameAgain(false), txNextPacket(true), txDone(false), appPort(3), portCallBack(NULL),
+    sendState(IDLE), softwarePort(false), serial(0l) {
     //memset(appSKey,0,sizeof(appSKey));
     //memset(nwkSKey,0,sizeof(nwkSKey));
 #ifdef __MBED__
@@ -204,7 +233,7 @@ bool LoraMsgManager::sendMessage(uint8_t * appData, uint8_t appDataSize) {
  */
 void LoraMsgManager::monitor(void) {
     while( isNetworkJoined == false ) {
-#if( OVER_THE_AIR_ACTIVATION != 0 )
+#if( defined (OVER_THE_AIR_ACTIVATION) && OVER_THE_AIR_ACTIVATION != 0 )
         if( txNextPacket == true ) {
             txNextPacket = false;
             

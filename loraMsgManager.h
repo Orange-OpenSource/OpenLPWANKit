@@ -20,7 +20,8 @@
 #include "board.h"
 #include "LoRaMac.h"
 #include "utilities.h"
-#define LOG_DEBUG(trace) debug(trace)
+#define LOG_DEBUG(trace) debug trace
+#define SERIALPORT Serial
 #endif
 
 #ifdef ARDUINO
@@ -82,6 +83,7 @@ public:
 
 #ifdef __MBED__
     LoRaMacEvent_t loRaMacEvents;
+    friend void onMacEvent( LoRaMacEventFlags_t *flags, LoRaMacEventInfo_t *info );
 #endif
 
     /*!
@@ -140,8 +142,8 @@ public:
 
 private:
 
-    bool softwarePort = false;
-    SERIALPORT* serial = 0l;
+    bool softwarePort;
+    SERIALPORT* serial;
     SendStatusType sendState;
     LoraMsgManager();
 
