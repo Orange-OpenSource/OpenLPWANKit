@@ -14,13 +14,33 @@
  
 #include "loraMsgManager.h"
 
+#ifdef __MBED__
+#define BYTEAVAILLABLE(comms) (comms)->readable()
+#define READONECHAR(comms)    (comms)->getc()
+#define PRINTONECHAR(comms,c) (comms)->putc(c)
+#define PRINTSTRING(comms,s)  (comms)->puts(s)
+#define PRINTHEX(comms,s)     (comms)->printf("%02X", s);
+#define WAIT_MS(ms)           wait_ms(ms)
+#define millis()              (us_ticker_read()/1000)
+#endif
 #ifdef ARDUINO
+#define BYTEAVAILLABLE(comms) (comms)->available()
+#define READONECHAR(comms)    (comms)->read()
+#define PRINTONECHAR(comms,c) (comms)->print(c)
+#define PRINTSTRING(comms,s)  (comms)->print(s)
+#define PRINTHEX(comms,s)     (comms)->print(s, HEX);
+#define WAIT_MS(ms)           delay(ms)
+#endif
+
+
+#if defined(ARDUINO)
 /** Comment for no debug - if debug need to define serialLog in main */
 #include <SoftwareSerial.h>
 extern SoftwareSerial serialLog; //(10, 11); // RX, TX
-#define LOG_DEBUG(trace) serialLog.print(trace)
+#define LOG_DEBUG(trace) serialLog.print trace
 /* end of debug zone */
 #endif
+
 
 
 LoraMsgManager& LoraMsgManager::getInstance() {
@@ -29,7 +49,7 @@ LoraMsgManager& LoraMsgManager::getInstance() {
 }
             
 static bool initBoard() { // Init Semtech Hardware
-#ifdef __MBED__
+#if defined(__MBED__) && defined(MOD_SX1276)
     LOG_DEBUG(( "\n\n\r initBoard " __TIMESTAMP__ "\n\r"));
     BoardInitMcu( );
     BoardInitPeriph( );
@@ -37,20 +57,11 @@ static bool initBoard() { // Init Semtech Hardware
     return false;
 };
 
+#if defined(__MBED__) && defined(MOD_SX1276)
 /*!
  * Indicates if the MAC layer has already joined a network.
  */
 bool LoraMsgManager::isNetworkJoined = initBoard();
-
-
-    /**
-     * Set serial port when needed
-     */
-SERIALPORT* LoraMsgManager::setSerial(SERIALPORT* newSerial) {
-  SERIALPORT* previous = serial;
-  serial = newSerial;
-  return previous;
-}
      
 /*!
  * Defines the join request timer
@@ -65,7 +76,6 @@ Ticker LoraMsgManager::joinReqTimer;
      * process rx frame and call specified callbacks
      */
 
-#ifdef __MBED__
 void LoraMsgManager::processRxFrame( LoRaMacEventFlags_t *flags, LoRaMacEventInfo_t *info ) {
     LOG_DEBUG(( "[Rx] Port=%d\n\r" , info->RxPort));
     ProcessRxFramePortCallback *currentPortCallback = portCallBack;
@@ -73,26 +83,68 @@ void LoraMsgManager::processRxFrame( LoRaMacEventFlags_t *flags, LoRaMacEventInf
         currentPortCallback++;
     if (currentPortCallback->callback) { // Found a callback
         (currentPortCallback->callback)(flags, info);
+    } else {
+        if (this->defaultCallBack) {
+            (this->defaultCallBack)(flags, info);
+        }
     }
 }
 #endif
-#ifdef ARDUINO
-void LoraMsgManager::processRxFrame( ) { }
 
-void purgeSerial(SERIALPORT* serial) {
-  if (serial) {
+
+    /**
+     * Set serial port when needed
+     */
+SERIALPORT* LoraMsgManager::setSerial(SERIALPORT* newSerial) {
+  SERIALPORT* previous = this->serial;
+  this->serial = newSerial;
+  return previous;
+}
+
+
+
+#if defined(ARDUINO)
+void purgeSerial(SERIALPORT* theSerial) {
     LOG_DEBUG((F("purgeSerial: ")));
-    uint8_t c;
-    while (serial->available()) {
-      c=serial->read();
-      LOG_DEBUG(((char) c));         
-    }
-    LOG_DEBUG(("\n\r"));   
+    if (theSerial) {
+        uint8_t c;
+        while (BYTEAVAILLABLE(theSerial)) {
+            c=READONECHAR(theSerial);
+            LOG_DEBUG(((char) c));
+        }
+        LOG_DEBUG(("\n\r"));
+  } else {
+      LOG_DEBUG(("Serial not yet set"));
   }
 }
 #endif
 
-#ifdef __MBED__
+#if defined(__MBED__) && ! defined(MOD_SX1276)
+const unsigned long MSGWINDOW=5;
+
+void purgeSerial(SERIALPORT* theSerial) {
+    //LOG_DEBUG((F("purgeS: \n\r")));
+    if (theSerial) {
+        uint8_t c;
+        unsigned long now=millis();
+        unsigned long lastCharTime=now;
+        while (now-lastCharTime < MSGWINDOW) {
+            while (BYTEAVAILLABLE(theSerial)) {
+                c=READONECHAR(theSerial);
+                lastCharTime=millis();
+                // printf("%c", (char) c); // uncomment to see response to AT command
+            }
+            now=millis();
+        }
+        //LOG_DEBUG(("\n\r"));
+  } else {
+      LOG_DEBUG(("Serial not yet set"));
+  }
+}
+#endif
+
+#if defined(__MBED__) && defined(MOD_SX1276)
+
 bool LoraMsgManager::SendFrame( void ) {
     LOG_DEBUG(("Send Frame\n\r"));
     uint8_t sendFrameStatus = 0;
@@ -136,11 +188,15 @@ static void onMacEvent( LoRaMacEventFlags_t *flags, LoRaMacEventInfo_t *info ) {
 #endif
 
 
-LoraMsgManager::LoraMsgManager() : trySendingFrameAgain(false), txNextPacket(true), txDone(false), appPort(3), portCallBack(NULL),
-    sendState(IDLE), softwarePort(false), serial(0l) {
+LoraMsgManager::LoraMsgManager() :
+#if defined(__MBED__) && defined(MOD_SX1276)
+    trySendingFrameAgain(false), txNextPacket(true), txDone(false),
+#endif
+     appPort(3), portCallBack(NULL), defaultCallBack(NULL),
+        sendState(IDLE), softwarePort(false), serial(0l) {
     //memset(appSKey,0,sizeof(appSKey));
     //memset(nwkSKey,0,sizeof(nwkSKey));
-#ifdef __MBED__
+#if defined(__MBED__) && defined(MOD_SX1276)
     loRaMacEvents.MacEvent = onMacEvent;
 #endif
 }
@@ -152,17 +208,19 @@ int LoraMsgManager::setAppPort(int newAppPort) {
     int previous=this->appPort;
     this->appPort=newAppPort;
 
-#ifdef ARDUINO
-  if (serial) {
-    serial->print("+++");          // Enter command mode
-    delay(250);
-    purgeSerial(serial);
-    serial->print("ATO082=");
-    serial->print(this->appPort, HEX);
-    serial->print("\n");
-    purgeSerial(serial);
-    serial->print("ATQ\n");        // Quit command mode
-    purgeSerial(serial);
+#if defined(ARDUINO) || ! defined(MOD_SX1276)
+  if (this->serial) {
+    PRINTSTRING(this->serial, "+++");          // Enter command mode
+    //WAIT_MS(50); // needed for arduino ???
+    purgeSerial(this->serial);
+    PRINTSTRING(this->serial, "ATO082=");
+    PRINTHEX(this->serial, this->appPort);
+    PRINTSTRING(this->serial, "\n");
+    purgeSerial(this->serial);
+    PRINTSTRING(this->serial, "ATQ\n");        // Quit command mode
+    purgeSerial(this->serial);
+  } else {
+      LOG_DEBUG(("serial port not set\n"));
   }
 #endif // ARDUINO
 
@@ -174,6 +232,13 @@ int LoraMsgManager::setAppPort(int newAppPort) {
 ProcessRxFramePortCallback * LoraMsgManager::setPortCallBack(ProcessRxFramePortCallback *portCallBackList) {
     ProcessRxFramePortCallback * previous=this->portCallBack;
     this->portCallBack=portCallBackList;
+    this->defaultCallBack=NULL;
+    ProcessRxFramePortCallback *currentPortCallback = portCallBack;
+    while (currentPortCallback->callback && currentPortCallback->port != ProcessRxFramePortCallback::PORTCALLBACK_DEFAULT)
+          currentPortCallback++;
+    if (currentPortCallback->callback) { // Found a default callback
+          this->defaultCallBack=currentPortCallback->callback;
+    }
     return previous;
 }
 
@@ -181,7 +246,7 @@ void LoraMsgManager::setNwkIds(uint8_t *newDevEui, uint32_t newDevAddr, uint8_t 
     this->devEui=newDevEui;
     this->devAddr=newDevAddr;
 
-#ifdef __MBED__
+#if defined(__MBED__) && defined(MOD_SX1276)
     memcpy1(this->nwkSKey, newNwkSKey, 16);
     memcpy1(this->appSKey, newAppSKey, 16);
 
@@ -206,7 +271,7 @@ void LoraMsgManager::setNwkIds(uint8_t *newDevEui, uint32_t newDevAddr, uint8_t 
     isNetworkJoined = true;
 #endif
 
-#ifdef __MBED__
+#if defined(__MBED__) && defined(MOD_SX1276)
     txNextPacket = true;
 
     LoRaMacSetAdrOn( true );
@@ -216,7 +281,7 @@ void LoraMsgManager::setNwkIds(uint8_t *newDevEui, uint32_t newDevAddr, uint8_t 
     sendState= READYTOSEND; 
 }
 
-#ifdef __MBED__
+#if defined(__MBED__) && defined(MOD_SX1276)
 bool LoraMsgManager::sendMessage(uint8_t * appData, uint8_t appDataSize) {
     if (sendState == READYTOSEND) {
         this->appData = appData;
@@ -271,12 +336,12 @@ bool LoraMsgManager::setSoftwarePort(bool state) {
   return previous;
 }
 
-#ifdef ARDUINO
+#if defined(ARDUINO) || ! defined(MOD_SX1276)
 bool LoraMsgManager::sendMessage(uint8_t * appData, uint8_t appDataSize) {
   LOG_DEBUG(("Send message\n\r"));
-  if (serial) { // Serial is set
+  if (this->serial) { // Serial is set
       for (;appDataSize ;appDataSize--) {
-        serial->write(*appData++);
+        PRINTONECHAR(this->serial,*appData++);
       }
     return true;
   } else {
@@ -286,20 +351,42 @@ bool LoraMsgManager::sendMessage(uint8_t * appData, uint8_t appDataSize) {
 
 
 void LoraMsgManager::monitor(void) {
-  if (serial && serial->available()) {
-    LOG_DEBUG(("Receive message "));
-    size_t bytesAvailable = min(serial->available(), LORA_MSGBUFFERSIZE);
-    serial->readBytes(receivedMsg, bytesAvailable);
+  if (this->serial && BYTEAVAILLABLE(this->serial)) {
+    //LOG_DEBUG(("Receive message "));
+    size_t bytesAvailable=0;
+#if defined(ARDUINO)
+    bytesAvailable = min(BYTEAVAILLABLE(this->serial), LORA_MSGBUFFERSIZE);
+    this->serial->readBytes(receivedMsg, bytesAvailable);
     LOG_DEBUG((bytesAvailable));
+#else // __MBED
+    unsigned long now=0;
+    unsigned long lastCharTime=0;
+    do {
+        for (;BYTEAVAILLABLE(this->serial) && bytesAvailable < LORA_MSGBUFFERSIZE; bytesAvailable++) {
+            receivedMsg[bytesAvailable]=(uint8_t) READONECHAR(this->serial);
+            lastCharTime=millis();
+        }
+        now=millis();
+    } while (now-lastCharTime < MSGWINDOW);
+    LOG_DEBUG(("%d", bytesAvailable));
+#endif
     LOG_DEBUG((" bytes \n\r"));
-    
+
+    //for (int byteno=0; byteno < bytesAvailable; byteno ++) {
+    //    printf("%02X", receivedMsg[byteno]);
+    //}
+
     // Dispatch message according to (soft)Port
     if (softwarePort) {
       ProcessRxFramePortCallback *currentPortCallback = portCallBack;
       while (currentPortCallback->callback && currentPortCallback->port != receivedMsg[0])
           currentPortCallback++;
       if (currentPortCallback->callback) { // Found a callback
-          (currentPortCallback->callback)(receivedMsg+1);
+          (currentPortCallback->callback)(receivedMsg+1, bytesAvailable-1);
+      } else { // default Port
+            if (this->defaultCallBack) {
+                (this->defaultCallBack)(receivedMsg, bytesAvailable);
+            }
       }
     }
   }

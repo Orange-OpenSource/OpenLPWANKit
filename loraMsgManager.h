@@ -17,10 +17,18 @@
 
 #ifdef __MBED__
 #include "mbed.h"
-#include "board.h"
-#include "LoRaMac.h"
-#include "utilities.h"
-#define LOG_DEBUG(trace) debug trace
+#if defined(MOD_SX1276)
+#   include "board.h"
+#   include "LoRaMac.h"
+#   include "utilities.h"
+#   define LOG_DEBUG(trace) debug trace
+//#   define LOG_DEBUG(trace)
+#else
+#   define LOG_DEBUG(trace) printf trace
+#   define LOG_DEBUG(trace)
+//#define LOG_DEBUG(trace) pc.printf trace
+#endif
+#define F(info) info
 #define SERIALPORT Serial
 #endif
 
@@ -29,21 +37,35 @@
 #define LOG_DEBUG(a)
 #define SERIALPORT Stream
 #endif
+
 /*!
  * receiving frame Callback function type 
  */
 typedef void (*ProcessRxFrameCallback) (
-#ifdef __MBED__
+#if defined(__MBED__) && defined(MOD_SX1276)
   LoRaMacEventFlags_t *flags, LoRaMacEventInfo_t *info
 #endif
-#ifdef ARDUINO
-  uint8_t *info
+#if defined(ARDUINO) || ! defined(MOD_SX1276)
+  uint8_t *info, uint8_t size
 #endif
 );
 
+/**
+ * Use for call part on (soft)port
+ * Last element of call back list must be {-1, NULL}.
+ * Can set a default call back if not port match with ProcessRxFramePortCallback::PORTCALLBACK_DEFAULT
+ * Ex:
+ * ProcessRxFramePortCallback loraPortCallBack[]= {
+ *   {20, onSetLed1},
+ *   {30, onSetLed2},
+ *   {ProcessRxFramePortCallback::PORTCALLBACK_DEFAULT, onError},
+ *   {-1, NULL} // this is mandatory
+ * };
+ */
 struct ProcessRxFramePortCallback {
     int port;
     ProcessRxFrameCallback callback;
+    static const int PORTCALLBACK_DEFAULT=256;
 };
 
 class LoraMsgManager {
@@ -57,6 +79,10 @@ public:
     
     static LoraMsgManager& getInstance();
     
+
+    uint8_t appPort;
+
+#if defined(__MBED__) && defined(MOD_SX1276)
     /*!
      * Indicates if the MAC layer has already joined a network.
      */
@@ -79,9 +105,6 @@ public:
     bool txNextPacket;
     bool txDone;
 
-    uint8_t appPort;
-
-#ifdef __MBED__
     LoRaMacEvent_t loRaMacEvents;
     friend void onMacEvent( LoRaMacEventFlags_t *flags, LoRaMacEventInfo_t *info );
 #endif
@@ -159,21 +182,19 @@ private:
     uint8_t appDataSize;
     
     ProcessRxFramePortCallback *portCallBack;
+    ProcessRxFrameCallback      defaultCallBack;
     
+#if defined(__MBED__) && defined(MOD_SX1276)
     /*!
      * process rx frame and call spécified callbacks
      */
     void processRxFrame(
-#ifdef __MBED__
     LoRaMacEventFlags_t *flags, LoRaMacEventInfo_t *info
-#endif
     );
-
-#ifdef __MBED__
     bool SendFrame( void );
 #endif
 
-#ifdef ARDUINO
+#if defined(ARDUINO) || ! defined(MOD_SX1276)
 #define LORA_MSGBUFFERSIZE 100
 
     uint8_t receivedMsg[LORA_MSGBUFFERSIZE];
