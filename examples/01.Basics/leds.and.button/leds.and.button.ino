@@ -6,7 +6,7 @@
 
 #define _VERSION_MAJOR "1"
 #define _VERSION_MINOR "0dev"
-#define _VERSION_DESC "orange dash"
+#define _VERSION_DESC "orange leds and buttons"
 
 #include "loraMsgManager.h"
 
@@ -17,7 +17,7 @@
 LoraMsgManager& loraMsgManager = LoraMsgManager::getInstance();
 
 /*
- * Device stuff
+ * Devices stuff
  */
 #include "ledPinout.h"
 #include "pushPinout.h"
@@ -62,9 +62,14 @@ MyPushSender blueButton(USER_BUTTON);
 
 
 // For debug
+
+/** Set to 1 for debug. */
+#define DEBUG_MODE 1
+
+#if DEBUG_MODE==1
 SoftwareSerial serialLog(10, 11); // RX, TX
 #define LOG_DEBUG(trace) serialLog.print(trace)
-
+#endif
 
 /**
  * Sensor/actuator list for checking Hardware;
@@ -106,7 +111,7 @@ static void setLedStatus ( MyLed& led, uint8_t *info ) {
 /**
  * port 20
  */
-static void onSetLed1 ( uint8_t *info ) {
+static void onSetLed1 ( uint8_t *info, uint8_t size ) {
     LOG_DEBUG(( "[Rx] setled1 state to "));
     LOG_DEBUG(( info[0]));
     LOG_DEBUG(( "\n\r"));
@@ -116,11 +121,20 @@ static void onSetLed1 ( uint8_t *info ) {
 /**
  * port 30
  */
-static void onSetLed2 ( uint8_t *info ) {
+static void onSetLed2 ( uint8_t *info, uint8_t size  ) {
     LOG_DEBUG(( "[Rx] setled2 state to "));
     LOG_DEBUG(( info[0]));
     LOG_DEBUG(( "\n\r"));
     setLedStatus ( led2, info );
+}
+
+/**
+ * default call back port 
+ */
+static void onDefaultMsg ( uint8_t *info, uint8_t size ) {
+    LOG_DEBUG(( "[Rx] message unknown "));
+    LOG_DEBUG(( info[0]));
+    LOG_DEBUG(( "\n\r"));
 }
 
 
@@ -130,6 +144,7 @@ static void onSetLed2 ( uint8_t *info ) {
 ProcessRxFramePortCallback loraPortCallBack[]= {
     {20, onSetLed1},
     {30, onSetLed2},
+    {ProcessRxFramePortCallback::PORTCALLBACK_DEFAULT, onDefaultMsg},
     {-1, NULL} // this is mandatory
 };
 
@@ -140,8 +155,9 @@ ProcessRxFramePortCallback loraPortCallBack[]= {
 
 void setup() {
   // put your setup code here, to run once:
-
+#if DEBUG_MODE==1
     serialLog.begin(19200);
+#endif
     
     Serial.begin(19200);
     // Setup Communication 
@@ -149,7 +165,6 @@ void setup() {
     loraMsgManager.setSoftwarePort(true);
     
     loraMsgManager.setPortCallBack(loraPortCallBack);
-    loraMsgManager.setNwkIds(DevEui, DevAddr, NwkSKey, AppSKey);
     loraMsgManager.setAppPort(AppPort);
 
     
@@ -158,7 +173,7 @@ void setup() {
         (*device)->startHW();
     }
     
-    LOG_DEBUG(( "\n\n\rLoRaWAN Orange Dash " _VERSION_MAJOR "," _VERSION_MINOR "," _VERSION_DESC "," __TIMESTAMP__ "\n\n\r" ));
+    LOG_DEBUG(( "\n\n\rLoRaWAN  " _VERSION_MAJOR "," _VERSION_MINOR "," _VERSION_DESC "," __TIMESTAMP__ "\n\n\r" ));
 
     led1.off();
     led2.blink();

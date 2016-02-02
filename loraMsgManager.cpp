@@ -119,8 +119,9 @@ void purgeSerial(SERIALPORT* theSerial) {
 }
 #endif
 
-#if defined(__MBED__) && ! defined(MOD_SX1276)
 const unsigned long MSGWINDOW=5;
+
+#if defined(__MBED__) && ! defined(MOD_SX1276)
 
 void purgeSerial(SERIALPORT* theSerial) {
     //LOG_DEBUG((F("purgeS: \n\r")));
@@ -354,11 +355,6 @@ void LoraMsgManager::monitor(void) {
   if (this->serial && BYTEAVAILLABLE(this->serial)) {
     //LOG_DEBUG(("Receive message "));
     size_t bytesAvailable=0;
-#if defined(ARDUINO)
-    bytesAvailable = min(BYTEAVAILLABLE(this->serial), LORA_MSGBUFFERSIZE);
-    this->serial->readBytes(receivedMsg, bytesAvailable);
-    LOG_DEBUG((bytesAvailable));
-#else // __MBED
     unsigned long now=0;
     unsigned long lastCharTime=0;
     do {
@@ -368,8 +364,7 @@ void LoraMsgManager::monitor(void) {
         }
         now=millis();
     } while (now-lastCharTime < MSGWINDOW);
-    LOG_DEBUG(("%d", bytesAvailable));
-#endif
+    LOG_DEBUG((bytesAvailable));
     LOG_DEBUG((" bytes \n\r"));
 
     //for (int byteno=0; byteno < bytesAvailable; byteno ++) {
