@@ -6,6 +6,12 @@
  * or at 'http://www.apache.org/licenses/LICENSE-2.0'.
  */
 
+/* Open IoT Kit for LPWAN
+ *
+ * Version:     0.1.0
+ * Created:     2015-12-15 by Franck Roudet
+ */
+
 /*!
  * Mote device IEEE EUI
  */

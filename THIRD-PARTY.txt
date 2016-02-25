@@ -1,0 +1,20 @@
+--
+LoRaMacLib
+Copyright (c) 2013 Semtech
+
+LoRaMacLib is distributed under the terms and conditions of the 'Revised BSD' license
+
+--
+
+Mbed
+Copyright (c) 2006 ARM Limited
+
+Mbed is distributed under the terms and conditions of the 'Apache 2.0' license
+
+--
+
+Arduino
+Copyright (c) Arduino LLC
+
+Arduino is distributed under the terms and conditions of the 'LGPL' license
+--
