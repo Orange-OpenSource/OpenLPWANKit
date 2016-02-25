@@ -27,6 +27,7 @@
 #define BYTEAVAILLABLE(comms) (comms)->available()
 #define READONECHAR(comms)    (comms)->read()
 #define PRINTONECHAR(comms,c) (comms)->print(c)
+#define WRITEONECHAR(comms,c) (comms)->write(c)
 #define PRINTSTRING(comms,s)  (comms)->print(s)
 #define PRINTHEX(comms,s)     (comms)->print(s, HEX);
 #define WAIT_MS(ms)           delay(ms)
@@ -342,7 +343,7 @@ bool LoraMsgManager::sendMessage(uint8_t * appData, uint8_t appDataSize) {
   LOG_DEBUG(("Send message\n\r"));
   if (this->serial) { // Serial is set
       for (;appDataSize ;appDataSize--) {
-        PRINTONECHAR(this->serial,*appData++);
+        WRITEONECHAR(this->serial,*appData++);
       }
     return true;
   } else {

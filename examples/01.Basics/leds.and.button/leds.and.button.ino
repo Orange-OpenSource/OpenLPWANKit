@@ -1,4 +1,4 @@
-/*
+/**
  * Orange - Franck Roudet 2016
  */
 
@@ -12,7 +12,7 @@
 
 
 /**
- * Get Lora Message manager
+ * Get LPWAN Message manager
  */
 LoraMsgManager& loraMsgManager = LoraMsgManager::getInstance();
 
@@ -72,7 +72,7 @@ SoftwareSerial serialLog(10, 11); // RX, TX
 #endif
 
 /**
- * Sensor/actuator list for checking Hardware;
+ * Sensors/actuators list for checking hardware;
  */
 CheckChangeMixin * hardwareList[]= {
     &led1,
@@ -81,11 +81,10 @@ CheckChangeMixin * hardwareList[]= {
     NULL    // +++ WARNING +++: must ends with NULL
 }; 
 
-/*! 
- * Include Configuration // for MBED devices
- */
-#include "deviceConf.h"
 
+/**
+ * Port for emmitting message
+ */
 static uint8_t AppPort = 3;
 
 
@@ -139,12 +138,12 @@ static void onDefaultMsg ( uint8_t *info, uint8_t size ) {
 
 
 /**
- * Lora Call back according to port (software port if necessary)
+ * LPWAN Call back according to port (software port if necessary)
  */
 ProcessRxFramePortCallback loraPortCallBack[]= {
     {20, onSetLed1},
     {30, onSetLed2},
-    {ProcessRxFramePortCallback::PORTCALLBACK_DEFAULT, onDefaultMsg},
+    {ProcessRxFramePortCallback::PORTCALLBACK_DEFAULT, onDefaultMsg}, // On error or if no other port set
     {-1, NULL} // this is mandatory
 };
 
@@ -159,7 +158,7 @@ void setup() {
     serialLog.begin(19200);
 #endif
     
-    Serial.begin(19200);
+    Serial.begin(19200); // Check your module configuration and adjust serial parameter
     // Setup Communication 
     loraMsgManager.setSerial(&Serial);
     loraMsgManager.setSoftwarePort(true);
@@ -168,12 +167,12 @@ void setup() {
     loraMsgManager.setAppPort(AppPort);
 
     
-    // Setup hw
+    // Setup hardware
     for (CheckChangeMixin **device=hardwareList; *device; device++) {
         (*device)->startHW();
     }
     
-    LOG_DEBUG(( "\n\n\rLoRaWAN  " _VERSION_MAJOR "," _VERSION_MINOR "," _VERSION_DESC "," __TIMESTAMP__ "\n\n\r" ));
+    LOG_DEBUG(( "\n\n\rLPWAN  " _VERSION_MAJOR "," _VERSION_MINOR "," _VERSION_DESC "," __TIMESTAMP__ "\n\n\r" ));
 
     led1.off();
     led2.blink();
