@@ -6,14 +6,14 @@
  * or at 'http://www.apache.org/licenses/LICENSE-2.0'.
  */
 
-/* A simple LoRa Message Manager
+/* A simple lpwan Message Manager
  *
  * Version:     0.1.0
  * Created:     2015-12-15 by Franck Roudet
  */
  
-#ifndef loraMsgManager_h
-#define loraMsgManager_h
+#ifndef lpwanMsgManager_h
+#define lpwanMsgManager_h
 
 #ifdef __MBED__
 #include "mbed.h"
@@ -55,7 +55,7 @@ typedef void (*ProcessRxFrameCallback) (
  * Last element of call back list must be {-1, NULL}.
  * Can set a default call back if not port match with ProcessRxFramePortCallback::PORTCALLBACK_DEFAULT
  * Ex:
- * ProcessRxFramePortCallback loraPortCallBack[]= {
+ * ProcessRxFramePortCallback lpwanPortCallBack[]= {
  *   {20, onSetLed1},
  *   {30, onSetLed2},
  *   {ProcessRxFramePortCallback::PORTCALLBACK_DEFAULT, onError},
@@ -68,7 +68,7 @@ struct ProcessRxFramePortCallback {
     static const int PORTCALLBACK_DEFAULT=256;
 };
 
-class LoraMsgManager {
+class LpwanMsgManager {
 
 public:
     
@@ -77,7 +77,7 @@ public:
 
     SendStatusType getState(void);
     
-    static LoraMsgManager& getInstance();
+    static LpwanMsgManager& getInstance();
     
 
     uint8_t appPort;
@@ -168,7 +168,7 @@ private:
     bool softwarePort;
     SERIALPORT* serial;
     SendStatusType sendState;
-    LoraMsgManager();
+    LpwanMsgManager();
 
     /*!
      * Current Data to sent, sent when is TxNextPacket is true
@@ -195,9 +195,9 @@ private:
 #endif
 
 #if defined(ARDUINO) || ! defined(MOD_SX1276)
-#define LORA_MSGBUFFERSIZE 100
+#define LPWAN_MSGBUFFERSIZE 100
 
-    uint8_t receivedMsg[LORA_MSGBUFFERSIZE];
+    uint8_t receivedMsg[LPWAN_MSGBUFFERSIZE];
 #endif
 };
 

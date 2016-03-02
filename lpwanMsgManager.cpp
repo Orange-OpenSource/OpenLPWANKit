@@ -6,13 +6,13 @@
  * or at 'http://www.apache.org/licenses/LICENSE-2.0'.
  */
 
-/* A simple LoRa Message Manager
+/* A simple lpwan Message Manager
  *
  * Version:     0.1.0
  * Created:     2015-12-15 by Franck Roudet
  */
  
-#include "loraMsgManager.h"
+#include "lpwanMsgManager.h"
 
 #ifdef __MBED__
 #define BYTEAVAILLABLE(comms) (comms)->readable()
@@ -44,8 +44,8 @@ extern SoftwareSerial serialLog; //(10, 11); // RX, TX
 
 
 
-LoraMsgManager& LoraMsgManager::getInstance() {
-    static  LoraMsgManager  instance;
+LpwanMsgManager& LpwanMsgManager::getInstance() {
+    static  LpwanMsgManager  instance;
     return instance;
 }
             
@@ -62,14 +62,14 @@ static bool initBoard() { // Init Semtech Hardware
 /*!
  * Indicates if the MAC layer has already joined a network.
  */
-bool LoraMsgManager::isNetworkJoined = initBoard();
+bool LpwanMsgManager::isNetworkJoined = initBoard();
      
 /*!
  * Defines the join request timer
  */
  
 #if( OVER_THE_AIR_ACTIVATION != 0 )
-Ticker LoraMsgManager::joinReqTimer;
+Ticker LpwanMsgManager::joinReqTimer;
 #endif
 
     
@@ -77,7 +77,7 @@ Ticker LoraMsgManager::joinReqTimer;
      * process rx frame and call specified callbacks
      */
 
-void LoraMsgManager::processRxFrame( LoRaMacEventFlags_t *flags, LoRaMacEventInfo_t *info ) {
+void LpwanMsgManager::processRxFrame( LoRaMacEventFlags_t *flags, LoRaMacEventInfo_t *info ) {
     LOG_DEBUG(( "[Rx] Port=%d\n\r" , info->RxPort));
     ProcessRxFramePortCallback *currentPortCallback = portCallBack;
     while (currentPortCallback->callback && currentPortCallback->port != info->RxPort)
@@ -96,7 +96,7 @@ void LoraMsgManager::processRxFrame( LoRaMacEventFlags_t *flags, LoRaMacEventInf
     /**
      * Set serial port when needed
      */
-SERIALPORT* LoraMsgManager::setSerial(SERIALPORT* newSerial) {
+SERIALPORT* LpwanMsgManager::setSerial(SERIALPORT* newSerial) {
   SERIALPORT* previous = this->serial;
   this->serial = newSerial;
   return previous;
@@ -147,7 +147,7 @@ void purgeSerial(SERIALPORT* theSerial) {
 
 #if defined(__MBED__) && defined(MOD_SX1276)
 
-bool LoraMsgManager::SendFrame( void ) {
+bool LpwanMsgManager::SendFrame( void ) {
     LOG_DEBUG(("Send Frame\n\r"));
     uint8_t sendFrameStatus = 0;
 
@@ -164,13 +164,13 @@ bool LoraMsgManager::SendFrame( void ) {
 }
 
 static void onMacEvent( LoRaMacEventFlags_t *flags, LoRaMacEventInfo_t *info ) {
-    static LoraMsgManager& loraManager=LoraMsgManager::getInstance();
+    static LpwanMsgManager& loraManager=LpwanMsgManager::getInstance();
 
     if( flags->Bits.JoinAccept == 1 ) {
 #if( OVER_THE_AIR_ACTIVATION != 0 )
         loraManager.joinReqTimer.detach( );
 #endif
-        LoraMsgManager::isNetworkJoined = true;
+        LpwanMsgManager::isNetworkJoined = true;
     }
     
     if( flags->Bits.Tx == 1 ) {
@@ -184,13 +184,13 @@ static void onMacEvent( LoRaMacEventFlags_t *flags, LoRaMacEventInfo_t *info ) {
 
     // Schedule a new transmission
     loraManager.txDone = true;
-    loraManager.sendState=LoraMsgManager::READYTOSEND;
+    loraManager.sendState=LpwanMsgManager::READYTOSEND;
 }
 
 #endif
 
 
-LoraMsgManager::LoraMsgManager() :
+LpwanMsgManager::LpwanMsgManager() :
 #if defined(__MBED__) && defined(MOD_SX1276)
     trySendingFrameAgain(false), txNextPacket(true), txDone(false),
 #endif
@@ -203,10 +203,10 @@ LoraMsgManager::LoraMsgManager() :
 #endif
 }
 
-LoraMsgManager::SendStatusType LoraMsgManager::getState(void) {
+LpwanMsgManager::SendStatusType LpwanMsgManager::getState(void) {
     return sendState;
 }
-int LoraMsgManager::setAppPort(int newAppPort) {
+int LpwanMsgManager::setAppPort(int newAppPort) {
     int previous=this->appPort;
     this->appPort=newAppPort;
 
@@ -231,7 +231,7 @@ int LoraMsgManager::setAppPort(int newAppPort) {
 }
 
 
-ProcessRxFramePortCallback * LoraMsgManager::setPortCallBack(ProcessRxFramePortCallback *portCallBackList) {
+ProcessRxFramePortCallback * LpwanMsgManager::setPortCallBack(ProcessRxFramePortCallback *portCallBackList) {
     ProcessRxFramePortCallback * previous=this->portCallBack;
     this->portCallBack=portCallBackList;
     this->defaultCallBack=NULL;
@@ -244,7 +244,7 @@ ProcessRxFramePortCallback * LoraMsgManager::setPortCallBack(ProcessRxFramePortC
     return previous;
 }
 
-void LoraMsgManager::setNwkIds(uint8_t *newDevEui, uint32_t newDevAddr, uint8_t *newNwkSKey, uint8_t *newAppSKey) {
+void LpwanMsgManager::setNwkIds(uint8_t *newDevEui, uint32_t newDevAddr, uint8_t *newNwkSKey, uint8_t *newAppSKey) {
     this->devEui=newDevEui;
     this->devAddr=newDevAddr;
 
@@ -284,7 +284,7 @@ void LoraMsgManager::setNwkIds(uint8_t *newDevEui, uint32_t newDevAddr, uint8_t 
 }
 
 #if defined(__MBED__) && defined(MOD_SX1276)
-bool LoraMsgManager::sendMessage(uint8_t * appData, uint8_t appDataSize) {
+bool LpwanMsgManager::sendMessage(uint8_t * appData, uint8_t appDataSize) {
     if (sendState == READYTOSEND) {
         this->appData = appData;
         this->appDataSize = appDataSize;
@@ -298,7 +298,7 @@ bool LoraMsgManager::sendMessage(uint8_t * appData, uint8_t appDataSize) {
 /*!
  * Send message and check incoming message
  */
-void LoraMsgManager::monitor(void) {
+void LpwanMsgManager::monitor(void) {
     while( isNetworkJoined == false ) {
 #if( defined (OVER_THE_AIR_ACTIVATION) && OVER_THE_AIR_ACTIVATION != 0 )
         if( txNextPacket == true ) {
@@ -332,14 +332,14 @@ void LoraMsgManager::monitor(void) {
 }
 #endif
 
-bool LoraMsgManager::setSoftwarePort(bool state) {
+bool LpwanMsgManager::setSoftwarePort(bool state) {
   bool previous=softwarePort;
   softwarePort=state;
   return previous;
 }
 
 #if defined(ARDUINO) || ! defined(MOD_SX1276)
-bool LoraMsgManager::sendMessage(uint8_t * appData, uint8_t appDataSize) {
+bool LpwanMsgManager::sendMessage(uint8_t * appData, uint8_t appDataSize) {
   LOG_DEBUG(("Send message\n\r"));
   if (this->serial) { // Serial is set
       for (;appDataSize ;appDataSize--) {
@@ -352,14 +352,14 @@ bool LoraMsgManager::sendMessage(uint8_t * appData, uint8_t appDataSize) {
 }
 
 
-void LoraMsgManager::monitor(void) {
+void LpwanMsgManager::monitor(void) {
   if (this->serial && BYTEAVAILLABLE(this->serial)) {
     //LOG_DEBUG(("Receive message "));
     size_t bytesAvailable=0;
     unsigned long now=0;
     unsigned long lastCharTime=0;
     do {
-        for (;BYTEAVAILLABLE(this->serial) && bytesAvailable < LORA_MSGBUFFERSIZE; bytesAvailable++) {
+        for (;BYTEAVAILLABLE(this->serial) && bytesAvailable < LPWAN_MSGBUFFERSIZE; bytesAvailable++) {
             receivedMsg[bytesAvailable]=(uint8_t) READONECHAR(this->serial);
             lastCharTime=millis();
         }

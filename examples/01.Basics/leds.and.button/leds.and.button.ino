@@ -24,7 +24,7 @@
 /**
  * Get LPWAN Message manager
  */
-LoraMsgManager& loraMsgManager = LoraMsgManager::getInstance();
+LpwanMsgManager& lpwanMsgManager = LpwanMsgManager::getInstance();
 
 /*
  * Devices stuff
@@ -50,7 +50,7 @@ public:
             LOG_DEBUG(("\n\r"));
             statusToSend=1-state; // 1 when press
             if (statusToSend) {
-                char readyToSend = loraMsgManager.sendMessage(&statusToSend,sizeof(statusToSend));
+                char readyToSend = lpwanMsgManager.sendMessage(&statusToSend,sizeof(statusToSend));
                 if (!readyToSend) {
                     LOG_DEBUG(("Not ready to send\n\r"));
                 }
@@ -150,7 +150,7 @@ static void onDefaultMsg ( uint8_t *info, uint8_t size ) {
 /**
  * LPWAN Call back according to port (software port if necessary)
  */
-ProcessRxFramePortCallback loraPortCallBack[]= {
+ProcessRxFramePortCallback lpwanPortCallBack[]= {
     {20, onSetLed1},
     {30, onSetLed2},
     {ProcessRxFramePortCallback::PORTCALLBACK_DEFAULT, onDefaultMsg}, // On error or if no other port set
@@ -170,11 +170,11 @@ void setup() {
     
     Serial.begin(19200); // Check your module configuration and adjust serial parameter
     // Setup Communication 
-    loraMsgManager.setSerial(&Serial);
-    loraMsgManager.setSoftwarePort(true);
+    lpwanMsgManager.setSerial(&Serial);
+    lpwanMsgManager.setSoftwarePort(true);
     
-    loraMsgManager.setPortCallBack(loraPortCallBack);
-    loraMsgManager.setAppPort(AppPort);
+    lpwanMsgManager.setPortCallBack(lpwanPortCallBack);
+    lpwanMsgManager.setAppPort(AppPort);
 
     
     // Setup hardware
@@ -197,6 +197,6 @@ void loop() {
       (*device)->checkChange();
   }
   
-  loraMsgManager.monitor(); // Check communication device
+  lpwanMsgManager.monitor(); // Check communication device
 
 }
