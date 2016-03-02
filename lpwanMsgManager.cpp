@@ -18,6 +18,7 @@
 #define BYTEAVAILLABLE(comms) (comms)->readable()
 #define READONECHAR(comms)    (comms)->getc()
 #define PRINTONECHAR(comms,c) (comms)->putc(c)
+#define WRITEONECHAR(comms,c) (comms)->putc(c)
 #define PRINTSTRING(comms,s)  (comms)->puts(s)
 #define PRINTHEX(comms,s)     (comms)->printf("%02X", s);
 #define WAIT_MS(ms)           wait_ms(ms)

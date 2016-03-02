@@ -34,6 +34,7 @@ In Arduino IDE, go to sketch **>** Import library **>** add library and select t
 
 In sketch **>** Import library, you got now **Open LPWAN Kit** library.
 
+For mbed fans, clone this example : https://developer.mbed.org/compiler/#nav:/OrangeDash 
 
 How to use ?
 ------------
