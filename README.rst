@@ -28,13 +28,12 @@ Requirements
 Installation
 ------------
 
-Download the latest version of the library (zip file) https://github.com/Orange-OpenSource/XXX/releases.
+Download the latest version of the library (zip file) https://github.com/franckOL/OpenLPWANKit/releases.
 
 In Arduino IDE, go to sketch **>** Import library **>** add library and select the downloaded zip file.
 
 In sketch **>** Import library, you got now **Open LPWAN Kit** library.
 
-Download the latest version of the library (zip file) https://github.com/Orange-OpenSource/xxx/releases.
 
 How to use ?
 ------------

@@ -18,7 +18,7 @@
 #define _VERSION_MINOR "0dev"
 #define _VERSION_DESC "orange leds and buttons"
 
-#include "loraMsgManager.h"
+#include "lpwanMsgManager.h"
 
 
 /**
